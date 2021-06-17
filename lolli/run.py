@@ -33,14 +33,14 @@ def run(
     cerebro = bt.Cerebro()
 
     # Add a strategy
-    # strats = cerebro.optstrategy(TestStrategy, maperiod=range(10, 31))
-    cerebro.addstrategy(TestStrategy)
+    # strats = cerebro.optstrategy(TestStrategy, maperiod=range(1, 31))
+    strats = cerebro.addstrategy(TestStrategy, maperiod=21)
 
     # Add the Data Feed to Cerebro
     cerebro.adddata(datafile(path, fromdate, todate))
 
     # Set our desired cash start
-    cerebro.broker.setcash(1000.0)
+    cerebro.broker.setcash(100000.0)
 
     # Add a FixedSize sizer according to the stake
     cerebro.addsizer(bt.sizers.FixedSize, stake=10)

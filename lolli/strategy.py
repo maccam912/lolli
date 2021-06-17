@@ -1,4 +1,5 @@
 import backtrader as bt
+from backtrader.indicators.crossover import CrossDown, CrossUp
 
 
 class TestStrategy(bt.Strategy):
@@ -16,6 +17,7 @@ class TestStrategy(bt.Strategy):
     def __init__(self):
         # Keep a reference to the "close" line in the data[0] dataseries
         self.dataclose = self.datas[0].close
+        self.started = False
 
         # To keep track of pending orders and buy price/commission
         self.order = None
@@ -23,39 +25,13 @@ class TestStrategy(bt.Strategy):
         self.buycomm = None
 
         # Add a MovingAverageSimple indicator
-        self.sma = bt.indicators.SimpleMovingAverage(
+        self.sma1 = bt.indicators.SimpleMovingAverage(
             self.datas[0], period=self.params.maperiod
         )
 
-    def notify_order(self, order):
-        if order.status in [order.Submitted, order.Accepted]:
-            # Buy/Sell order submitted/accepted to/by broker - Nothing to do
-            return
-
-        # Check if an order has been completed
-        # Attention: broker could reject order if not enough cash
-        if order.status in [order.Completed]:
-            if order.isbuy():
-                self.log(
-                    "BUY EXECUTED, Price: %.2f, Cost: %.2f, Comm %.2f"
-                    % (order.executed.price, order.executed.value, order.executed.comm)
-                )
-
-                self.buyprice = order.executed.price
-                self.buycomm = order.executed.comm
-            else:  # Sell
-                self.log(
-                    "SELL EXECUTED, Price: %.2f, Cost: %.2f, Comm %.2f"
-                    % (order.executed.price, order.executed.value, order.executed.comm)
-                )
-
-            self.bar_executed = len(self)
-
-        elif order.status in [order.Canceled, order.Margin, order.Rejected]:
-            self.log("Order Canceled/Margin/Rejected")
-
-        # Write down: no pending order
-        self.order = None
+        self.sma2 = bt.indicators.SimpleMovingAverage(
+            self.datas[0], period=(self.params.maperiod) * 2
+        )
 
     def notify_trade(self, trade):
         if not trade.isclosed:
@@ -64,35 +40,21 @@ class TestStrategy(bt.Strategy):
         self.log("OPERATION PROFIT, GROSS %.2f, NET %.2f" % (trade.pnl, trade.pnlcomm))
 
     def next(self):
-        # Simply log the closing price of the series from the reference
-        self.log("Close, %.2f" % self.dataclose[0])
-
-        # Check if an order is pending ... if yes, we cannot send a 2nd one
-        if self.order:
-            return
-
-        # Check if we are in the market
-        if not self.position:
-
-            # Not yet ... we MIGHT BUY if ...
-            if self.dataclose[0] > self.sma[0]:
-
-                # BUY, BUY, BUY!!! (with all possible default parameters)
-                self.log("BUY CREATE, %.2f" % self.dataclose[0])
-
-                # Keep track of the created order to avoid a 2nd order
-                self.order = self.buy()
-
-        else:
-
-            if self.dataclose[0] < self.sma[0]:
-                # SELL, SELL, SELL!!! (with all possible default parameters)
-                self.log("SELL CREATE, %.2f" % self.dataclose[0])
-
-                # Keep track of the created order to avoid a 2nd order
-                self.order = self.sell()
+        if not self.started:
+            if self.sma1[0] > self.sma2[0]:
+                self.buy()
+            else:
+                self.sell()
+            self.buy()
+            self.started = True
+        if self.sma1[-1] <= self.sma2[-1] and self.sma1[0] > self.sma2[0]:
+            self.buy(size=2)
+        if self.sma1[-1] > self.sma2[-1] and self.sma1[0] <= self.sma2[0]:
+            self.sell(size=2)
 
     def stop(self):
+        self.close()
+
         self.log(
             "(MA Period %2d) Ending Value %.2f"
             % (self.params.maperiod, self.broker.getvalue()),
