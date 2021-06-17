@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "lolli"
+version = "0.1.0"
+description = ""
+authors = ["maccam912 <maccam912@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+td-ameritrade-python-api = "^0.3.5"
+backtrader = {git = "https://github.com/mementum/backtrader"}
+matplotlib = "^3.4.2"
+typer = "^0.3.2"
+
+[tool.poetry.dev-dependencies]
+pytest = "^5.2"
+black = "^21.6b0"
+
+[tool.poetry.scripts]
+lolli = "lolli.run:main"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
